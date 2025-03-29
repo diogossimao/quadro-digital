@@ -1,0 +1,131 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quadro Digital</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background-color: #fff;
+      font-family: sans-serif;
+    }
+    #toolbar {
+      background: #eee;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    canvas {
+      flex-grow: 1;
+      cursor: crosshair;
+    }
+    button, select, input[type="color"], input[type="range"] {
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <label>Cor da caneta:</label>
+    <input type="color" id="colorPicker" value="#000000" />
+    
+    <label>Largura:</label>
+    <input type="range" id="lineWidth" min="1" max="20" value="2" />
+    
+    <button onclick="toggleBackground()">Fundo Branco/Preto</button>
+    <button onclick="clearCanvas()">Limpar</button>
+    <button onclick="recognizeText()">OCR</button>
+    <button onclick="detectShape()">Detectar Forma</button>
+    <button onclick="exportPDF()">Exportar PDF</button>
+    <button onclick="goFullscreen()">Tela cheia</button>
+  </div>
+  <canvas id="canvas"></canvas>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+    let bgColor = '#ffffff';
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight - document.getElementById('toolbar').offsetHeight;
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    canvas.addEventListener('mousedown', e => {
+      drawing = true;
+      ctx.beginPath();
+      ctx.moveTo(e.offsetX, e.offsetY);
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      if (!drawing) return;
+      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.strokeStyle = document.getElementById('colorPicker').value;
+      ctx.lineWidth = document.getElementById('lineWidth').value;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    });
+
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mouseleave', () => drawing = false);
+
+    function toggleBackground() {
+      bgColor = (bgColor === '#ffffff') ? '#000000' : '#ffffff';
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    function clearCanvas() {
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    async function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "px",
+        format: [canvas.width, canvas.height]
+      });
+      const imgData = canvas.toDataURL("image/png");
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+      pdf.save("quadro-digital.pdf");
+    }
+
+    async function recognizeText() {
+      const img = canvas.toDataURL();
+      const result = await Tesseract.recognize(img, 'eng');
+      alert("Texto reconhecido: " + result.data.text);
+    }
+
+    function detectShape() {
+      alert("Reconhecimento de formas será adicionado com IA em versão futura.");
+    }
+
+    function goFullscreen() {
+      if (canvas.requestFullscreen) {
+        canvas.requestFullscreen();
+      } else if (canvas.webkitRequestFullscreen) {
+        canvas.webkitRequestFullscreen();
+      }
+    }
+  </script>
+</body>
+</html>
